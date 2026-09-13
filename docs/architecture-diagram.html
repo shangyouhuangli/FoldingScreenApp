@@ -1,0 +1,80 @@
+<html style="margin:0;padding:0;">
+<div style="background-color:transparent;box-sizing:border-box;font-family:'Roboto','PingFang SC','Segoe UI',Arial,sans-serif;--accent:#94D4D0;color:#1A1B1C;max-width:720px;">
+  <div style="font-size:15px;font-weight:600;margin:4px 0 2px;">折叠屏模拟 · 应用架构与双模式渲染管线</div>
+  <div style="font-size:12px;color:#6B7280;margin-bottom:12px;">示意结构：基于本工程源码（com.example.foldingscreen），非官方架构图</div>
+
+  <!-- 1. 启动与权限流程 -->
+  <div style="font-size:13px;font-weight:600;margin:8px 0 6px;">① 启动流程（无主界面）</div>
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;">
+    <span style="background:#F1FAF9;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">点击图标</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#F1FAF9;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">LaunchActivity（透明）</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#F1FAF9;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">悬浮窗权限 + 通知权限</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#94D4D0;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;font-weight:600;">OverlayService 前台服务（mediaProjection 类型）</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#F1FAF9;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">桌面仅剩 48dp 悬浮按钮 · Activity 自毁</span>
+  </div>
+
+  <!-- 2. 双模式管线 -->
+  <div style="font-size:13px;font-weight:600;margin:14px 0 6px;">② 双模式渲染管线（同一 GL 线程 / 同一屏幕纹理 / 60fps vsync）</div>
+  <div style="display:flex;flex-wrap:wrap;gap:12px;">
+
+    <!-- 空间锚定 -->
+    <div style="flex:1 1 300px;min-width:0;background:linear-gradient(135deg,rgba(148,212,208,0.12),rgba(148,212,208,0.28));border-radius:12px;padding:10px 12px;box-sizing:border-box;">
+      <div style="font-size:13px;font-weight:600;">模式一 · 空间锚定显示</div>
+      <div style="font-size:12px;line-height:1.8;margin-top:4px;">
+        TYPE_ROTATION_VECTOR（SENSOR_DELAY_GAME）<br>
+        <span style="color:#6B7280;">基准 R0 · 当前 R1 → 相对旋转 R_rel = R1ᵀ·R0</span><br>
+        <span style="color:#6B7280;">→ 全屏四边形(z=0) × R_rel（逆三维旋转变换）</span><br>
+        <span style="color:#6B7280;">→ 正交投影（无透视）→ 空余区域纯黑填充</span>
+      </div>
+      <div style="font-size:11px;color:#556;margin-top:4px;background:rgba(255,255,255,0.55);border-radius:6px;padding:4px 6px;">约束：仅响应旋转，不处理位移 / 不改变纹理缩放 / 无 3D 透视</div>
+    </div>
+
+    <!-- 万向折叠 -->
+    <div style="flex:1 1 300px;min-width:0;background:linear-gradient(135deg,rgba(148,212,208,0.12),rgba(148,212,208,0.28));border-radius:12px;padding:10px 12px;box-sizing:border-box;">
+      <div style="font-size:13px;font-weight:600;">模式二 · 万向折叠屏模拟</div>
+      <div style="font-size:12px;line-height:1.8;margin-top:4px;">
+        折叠轴 a=(cosθ,sinθ) 0~360° · 折叠角 φ 0~180°<br>
+        <span style="color:#6B7280;">→ 32×32 顶点网格，圆柱半径 r = 2L/φ</span><br>
+        <span style="color:#6B7280;">→ p' = a·t + n·r·sinα + z·r·(1−cosα)，α=d/r（弧长不变）</span><br>
+        <span style="color:#6B7280;">→ 折痕高光 exp(−d²/2σ²) + 内侧阴影 (1−cosα) × 顶点光照</span>
+      </div>
+      <div style="font-size:11px;color:#556;margin-top:4px;background:rgba(255,255,255,0.55);border-radius:6px;padding:4px 6px;">约束：内容比例不变形 / 正交投影无近大远小 / 指数平滑动画无跳变</div>
+    </div>
+  </div>
+
+  <!-- 3. 按钮手势 -->
+  <div style="font-size:13px;font-weight:600;margin:14px 0 6px;">③ 悬浮按钮手势 → 控制映射（折叠模式开启时）</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;">
+    <span style="background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">短按 → 模式开/关</span>
+    <span style="background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">长按 → 模式菜单</span>
+    <span style="background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">上/下滑 → 折叠角 ±（0~180°）</span>
+    <span style="background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">左/右滑 → 折叠轴 0~360°</span>
+    <span style="background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">双击 → 复位展开（动画）</span>
+    <span style="background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">慢速拖拽 → 移动 + 边缘吸附</span>
+  </div>
+
+  <!-- 4. 资源释放 -->
+  <div style="font-size:13px;font-weight:600;margin:14px 0 6px;">④ 模式关闭 / 退出时按创建逆序释放</div>
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;">
+    <span style="background:#FDEBEC;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">GL 渲染线程/EGL</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#FDEBEC;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">悬浮渲染层</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#FDEBEC;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">虚拟显示/ImageReader</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#FDEBEC;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">姿态传感器</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#FDEBEC;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">MediaProjection</span>
+    <span style="color:#6B7280;">→</span>
+    <span style="background:#FDEBEC;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:6px 8px;">悬浮按钮</span>
+  </div>
+
+  <div style="font-size:11px;color:#6B7280;margin-top:12px;border-top:1px solid #E4E3DD;padding-top:6px;">
+    画面源说明：MediaProjection 会采集悬浮层自身，故渲染层出现前先采一帧纯净画面作为纹理，变换为实时 60fps，纹理为开启瞬间快照（详见 README 已知限制）。
+  </div>
+</div>
+</html>
