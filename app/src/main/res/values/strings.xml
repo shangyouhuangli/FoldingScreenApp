@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">折叠屏模拟</string>
+    <string name="notification_channel_name">折叠屏模拟服务</string>
+    <string name="notification_title">折叠屏模拟运行中</string>
+    <string name="notification_text">点击悬浮按钮或通知可停止</string>
+    <string name="action_stop">停止</string>
+
+    <!-- 悬浮按钮文字（模式名 / 停止） -->
+    <string name="mode_spatial">空间锚定</string>
+    <string name="mode_fold">万向折叠</string>
+    <string name="mode_stop">停止</string>
+
+    <!-- 模式选择菜单 -->
+    <string name="menu_spatial">空间锚定模式</string>
+    <string name="menu_fold">万向折叠模式</string>
+</resources>

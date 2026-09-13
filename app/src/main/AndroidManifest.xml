@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ==================== 权限声明 ==================== -->
+    <!-- 悬浮窗：绘制悬浮控制按钮 + 全屏 OpenGL 渲染层（覆盖所有应用） -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 前台服务基础权限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Android 14+ 强制要求：mediaProjection 类型前台服务必须声明此权限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- Android 13+ 通知运行时权限（常驻通知栏） -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 传感器为软特性：无旋转矢量传感器的设备应用仍可安装（折叠模式不受影响） -->
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Transparent">
+
+        <!--
+            透明启动 Activity（应用唯一入口，无主界面）：
+            自动申请悬浮窗权限 → 权限通过后启动前台服务 → 自行 finish() 销毁。
+        -->
+        <activity
+            android:name=".LaunchActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Transparent">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            透明 Activity：负责弹出 MediaProjection 屏幕录制授权对话框（动态申请），
+            用户确认后把 (resultCode, data) 通过静态回调交还给 OverlayService。
+        -->
+        <activity
+            android:name=".MediaProjectionRequestActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.Transparent" />
+
+        <!--
+            前台服务：悬浮窗管理、姿态传感器、屏幕采集、OpenGL 渲染的全生命周期控制。
+            foregroundServiceType="mediaProjection"：Android 14 创建投影前的强制要求。
+        -->
+        <service
+            android:name=".OverlayService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+    </application>
+
+</manifest>
